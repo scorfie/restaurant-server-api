@@ -49,7 +49,10 @@ const openapiSpec = {
     description:
       'REST API for managing restaurant branches, menus, orders, customer accounts, and staff accounts. ' +
       'Authenticate with `POST /auth/login` (customers) or `POST /auth/staff/login` (staff), then send the ' +
-      'returned token as `Authorization: Bearer <token>` on protected endpoints.',
+      'returned token as `Authorization: Bearer <token>` on protected endpoints.\n\n' +
+      'Real-time order updates are also available over Socket.IO on the same host/port (not representable in ' +
+      'OpenAPI) — connect with the same JWT in the socket `auth` payload and listen for `order:created` / ' +
+      '`order:statusChanged`. See the README for the full WebSocket event reference.',
   },
   servers: [{ url: '/api/v1' }],
   tags: [

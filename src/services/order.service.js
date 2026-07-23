@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import orderEvents from '../realtime/orderEvents.js';
 import ApiError from '../utils/ApiError.js';
 import { ensureBranchExists } from './branch.service.js';
 
@@ -140,7 +141,9 @@ async function createOrder(branchId, payload, { customerId = null } = {}) {
     connection.release();
   }
 
-  return getOrderById(orderId);
+  const order = await getOrderById(orderId);
+  orderEvents.emit('order:created', order);
+  return order;
 }
 
 async function getOrderById(id) {
@@ -255,7 +258,9 @@ async function updateOrderStatus(id, nextStatus) {
 
   await pool.query('UPDATE orders SET status = ? WHERE id = ?', [nextStatus, id]);
 
-  return getOrderById(id);
+  const order = await getOrderById(id);
+  orderEvents.emit('order:statusChanged', order);
+  return order;
 }
 
 export { createOrder, getOrderById, getOrderForCustomer, listOrders, updateOrderStatus };

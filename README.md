@@ -1,6 +1,6 @@
 # Restaurant Server API
 
-REST API for managing restaurant branches, per-branch menus, orders, customer accounts, and staff accounts, built with Node.js, Express, and MySQL.
+REST + WebSocket API for managing restaurant branches, per-branch menus, orders, customer accounts, and staff accounts, built with Node.js, Express, and MySQL.
 
 ## Stack
 
@@ -8,6 +8,7 @@ REST API for managing restaurant branches, per-branch menus, orders, customer ac
 - MySQL (`mysql2` with a connection pool)
 - `express-validator` for request validation
 - `jsonwebtoken` + `bcryptjs` for authentication
+- `socket.io` for real-time order updates
 - `swagger-ui-express` for interactive API docs
 - Layered architecture: routes → controllers → services → MySQL
 
@@ -59,6 +60,9 @@ src/
     password.js
   docs/
     openapi.js          OpenAPI 3.0 spec served at /api-docs
+  realtime/
+    orderEvents.js       Internal EventEmitter (decouples order.service from Socket.IO)
+    socket.js            JWT-authed Socket.IO server, rooms, broadcasts
   app.js                Express app setup
 migrations/
   001_create_branches_table.sql
@@ -264,6 +268,57 @@ curl -X POST http://localhost:3000/api/v1/customers/me/orders \
 ```
 
 Order creation validates that every `menuItemId` belongs to the target branch and is currently available, computes each line's subtotal server-side from the menu item's current price, and writes the order plus its items in a single database transaction.
+
+## Real-time order updates (WebSocket)
+
+The HTTP server and the WebSocket server run on the same port (`server.js` wraps the Express app in a plain `http.Server` and attaches Socket.IO to it), so no separate port or process is needed.
+
+### Connecting
+
+Authenticate the socket with the **same JWT** used for REST (customer or staff token), passed in the `auth` payload — not as an HTTP header, since this is a handshake, not a request:
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: { token: '<jwt-from-login>' },
+});
+
+socket.on('connect_error', (err) => console.error('rejected:', err.message));
+```
+
+A connection without a valid token is rejected at the handshake (`connect_error`) before any data is exchanged. On connect, sockets are auto-joined to a room based on their identity:
+
+- Customer token → joined to `customer:<customerId>` (their own order updates only).
+- Staff token (any role) → joined to `staff` (every order update, matching what `GET /orders` already exposes to staff).
+
+### Client → server events
+
+| Event                | Payload            | Who           | Effect                                                                 |
+|-----------------------|----------------------|----------------|---------------------------------------------------------------------------|
+| `order:subscribe`     | `{ orderId }`         | customer/staff | Joins `order:<id>` and acks with `{ success, data: <order> }` — this is the "get status" call: it returns the current order immediately, then live updates follow via `order:statusChanged`. Customers get a `success: false` ack (no order leaked) if the order isn't theirs. |
+| `order:unsubscribe`   | `{ orderId }`         | customer/staff | Leaves `order:<id>`.                                                        |
+| `branch:subscribe`    | `{ branchId }`        | staff only     | Joins `branch:<id>` (e.g. a kitchen display for one branch). Acks `{ success: false }` for customer tokens. |
+| `branch:unsubscribe`  | `{ branchId }`        | staff only     | Leaves `branch:<id>`.                                                       |
+
+### Server → client events
+
+| Event                 | Payload         | Sent to                                                              |
+|------------------------|-------------------|-------------------------------------------------------------------------|
+| `order:created`        | full order object  | `staff` room, `branch:<branchId>` room, and `customer:<customerId>` room if the order has one |
+| `order:statusChanged`  | full order object  | same targets as above, plus anyone subscribed to `order:<id>` directly     |
+
+```js
+socket.emit('order:subscribe', { orderId: 42 }, (res) => {
+  if (res.success) console.log('current status:', res.data.status);
+});
+
+socket.on('order:statusChanged', (order) => {
+  console.log(`order ${order.orderNumber} is now ${order.status}`);
+});
+```
+
+Both `order:created` and `order:statusChanged` fire from `order.service.js` after the triggering REST call (`POST .../orders` or `PATCH /orders/:id/status`) commits — there's no polling on the client side.
 
 ## Customer account endpoints
 
