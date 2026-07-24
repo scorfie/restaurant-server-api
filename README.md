@@ -67,10 +67,9 @@ src/
 migrations/
   001_create_branches_table.sql
   002_create_menu_items_table.sql
-  003_create_orders_tables.sql
-  004_create_customers_table.sql
+  003_create_customers_table.sql
+  004_create_orders_tables.sql
   005_create_staff_table.sql
-  006_add_customer_id_to_orders.sql
 server.js               Entry point
 ```
 
@@ -185,6 +184,7 @@ List filters: `page`, `limit`, `status`, `city`, `search` (matches `name` or `co
 | description | string  | optional                     |
 | price       | float   | required, >= 0               |
 | category    | string  | optional (e.g. `Main`)       |
+| imageUrl    | string  | optional, must be a valid URL |
 | isAvailable | boolean | defaults to `true`           |
 
 ### Menu item endpoints

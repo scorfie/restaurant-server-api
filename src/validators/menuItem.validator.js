@@ -12,6 +12,7 @@ const createMenuItem = [
   body('description').optional({ nullable: true }).trim().isLength({ max: 500 }),
   body('price').isFloat({ min: 0 }).withMessage('price must be a non-negative number'),
   body('category').optional({ nullable: true }).trim().isLength({ max: 100 }),
+  body('imageUrl').optional({ nullable: true }).trim().isURL().isLength({ max: 500 }),
   body('isAvailable').optional().isBoolean().withMessage('isAvailable must be a boolean'),
 ];
 
@@ -21,6 +22,7 @@ const updateMenuItem = [
   body('description').optional({ nullable: true }).trim().isLength({ max: 500 }),
   body('price').optional().isFloat({ min: 0 }).withMessage('price must be a non-negative number'),
   body('category').optional({ nullable: true }).trim().isLength({ max: 100 }),
+  body('imageUrl').optional({ nullable: true }).trim().isURL().isLength({ max: 500 }),
   body('isAvailable').optional().isBoolean().withMessage('isAvailable must be a boolean'),
 ];
 

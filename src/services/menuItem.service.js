@@ -11,6 +11,7 @@ function toApiShape(row) {
     description: row.description,
     price: Number(row.price),
     category: row.category,
+    imageUrl: row.image_url,
     isAvailable: !!row.is_available,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -20,12 +21,19 @@ function toApiShape(row) {
 async function createMenuItem(branchId, payload) {
   await ensureBranchExists(branchId);
 
-  const { name, description = null, price, category = null, isAvailable = true } = payload;
+  const {
+    name,
+    description = null,
+    price,
+    category = null,
+    imageUrl = null,
+    isAvailable = true,
+  } = payload;
 
   const [result] = await pool.query(
-    `INSERT INTO menu_items (branch_id, name, description, price, category, is_available)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [branchId, name, description, price, category, isAvailable ? 1 : 0]
+    `INSERT INTO menu_items (branch_id, name, description, price, category, image_url, is_available)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [branchId, name, description, price, category, imageUrl, isAvailable ? 1 : 0]
   );
 
   return getMenuItemById(result.insertId);
@@ -95,6 +103,7 @@ async function updateMenuItem(id, payload) {
     description: 'description',
     price: 'price',
     category: 'category',
+    imageUrl: 'image_url',
     isAvailable: 'is_available',
   };
 

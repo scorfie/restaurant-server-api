@@ -3,6 +3,7 @@ USE restaurant_db;
 CREATE TABLE IF NOT EXISTS orders (
   id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   branch_id       INT UNSIGNED NOT NULL,
+  customer_id     INT UNSIGNED DEFAULT NULL,
   order_number    VARCHAR(30) DEFAULT NULL,
   customer_name   VARCHAR(150) DEFAULT NULL,
   customer_phone  VARCHAR(20) DEFAULT NULL,
@@ -14,8 +15,10 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_orders_branch FOREIGN KEY (branch_id) REFERENCES branches (id) ON DELETE CASCADE,
+  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE SET NULL,
   UNIQUE KEY uq_orders_order_number (order_number),
   KEY idx_orders_branch (branch_id),
+  KEY idx_orders_customer (customer_id),
   KEY idx_orders_status (status),
   KEY idx_orders_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
