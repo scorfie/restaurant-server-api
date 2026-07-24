@@ -34,6 +34,14 @@ router.get(
   validate,
   controller.getMyOrder
 );
+router.patch(
+  '/me/orders/:id/cancel',
+  authenticate,
+  requireCustomer,
+  customerValidator.myOrderIdParam,
+  validate,
+  controller.cancelMyOrder
+);
 
 // Staff visibility into customer accounts
 router.get('/', authenticate, requireStaffRole('admin', 'manager'), customerValidator.listCustomers, validate, controller.list);

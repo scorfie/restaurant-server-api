@@ -236,6 +236,15 @@ async function listOrders({ branchId, customerId, page = 1, limit = 20, status, 
   };
 }
 
+async function cancelOrderForCustomer(customerId, id) {
+  const [rows] = await pool.query('SELECT customer_id FROM orders WHERE id = ?', [id]);
+  if (rows.length === 0 || rows[0].customer_id !== customerId) {
+    throw ApiError.notFound(`Order with id ${id} not found`);
+  }
+
+  return updateOrderStatus(id, 'cancelled');
+}
+
 async function updateOrderStatus(id, nextStatus) {
   const [rows] = await pool.query('SELECT status FROM orders WHERE id = ?', [id]);
   if (rows.length === 0) {
@@ -263,4 +272,11 @@ async function updateOrderStatus(id, nextStatus) {
   return order;
 }
 
-export { createOrder, getOrderById, getOrderForCustomer, listOrders, updateOrderStatus };
+export {
+  createOrder,
+  getOrderById,
+  getOrderForCustomer,
+  listOrders,
+  updateOrderStatus,
+  cancelOrderForCustomer,
+};

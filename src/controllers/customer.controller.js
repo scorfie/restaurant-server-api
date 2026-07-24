@@ -39,6 +39,11 @@ const getMyOrder = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: order });
 });
 
+const cancelMyOrder = asyncHandler(async (req, res) => {
+  const order = await orderService.cancelOrderForCustomer(req.auth.sub, req.params.id);
+  res.status(200).json({ success: true, data: order });
+});
+
 const list = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search } = req.query;
   const result = await customerService.listCustomers({ page: Number(page), limit: Number(limit), search });
@@ -50,4 +55,14 @@ const getById = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: customer });
 });
 
-export { getMe, updateMe, changeMyPassword, createMyOrder, listMyOrders, getMyOrder, list, getById };
+export {
+  getMe,
+  updateMe,
+  changeMyPassword,
+  createMyOrder,
+  listMyOrders,
+  getMyOrder,
+  cancelMyOrder,
+  list,
+  getById,
+};

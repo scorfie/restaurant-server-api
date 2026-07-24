@@ -252,6 +252,7 @@ List filters: `page`, `limit`, `status`, `orderType`, `dateFrom`, `dateTo` (ISO 
 | POST   | `/customers/me/orders`       | customer  | Place an order as the logged-in customer     |
 | GET    | `/customers/me/orders`       | customer  | List the logged-in customer's own orders     |
 | GET    | `/customers/me/orders/:id`   | customer  | Get one of the logged-in customer's own orders (404 if it belongs to someone else) |
+| PATCH  | `/customers/me/orders/:id/cancel` | customer | Cancel one of the logged-in customer's own orders (same transition rules as staff cancellation — fails with 400 once `completed` or already `cancelled`) |
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/customers/me/orders \
