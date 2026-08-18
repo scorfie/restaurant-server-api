@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum BranchStatus {
+  active
+  inactive
+}
+
+enum StaffRole {
+  admin
+  manager
+  staff
+}
+
+enum OrderType {
+  dine_in
+  takeaway
+  delivery
+}
+
+enum OrderStatus {
+  pending
+  preparing
+  ready
+  completed
+  cancelled
+}
+
+model Branch {
+  id               Int          @id @default(autoincrement())
+  name             String       @db.VarChar(150)
+  code             String       @unique @db.VarChar(20)
+  address          String       @db.VarChar(255)
+  city             String       @db.VarChar(100)
+  state            String?      @db.VarChar(100)
+  country          String       @default("Sri Lanka") @db.VarChar(100)
+  postalCode       String?      @map("postal_code") @db.VarChar(20)
+  phone            String       @db.VarChar(20)
+  email            String?      @db.VarChar(150)
+  managerName      String?      @map("manager_name") @db.VarChar(150)
+  openingTime      DateTime?    @map("opening_time") @db.Time()
+  closingTime      DateTime?    @map("closing_time") @db.Time()
+  seatingCapacity  Int?         @map("seating_capacity")
+  latitude         Decimal?     @db.Decimal(10, 8)
+  longitude        Decimal?     @db.Decimal(11, 8)
+  status           BranchStatus @default(active)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  menuItems MenuItem[]
+  orders    Order[]
+  staff     Staff[]
+
+  @@index([city])
+  @@index([status])
+  @@map("branches")
+}
+
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  branchId    Int      @map("branch_id")
+  name        String   @db.VarChar(150)
+  description String?  @db.VarChar(500)
+  price       Decimal  @db.Decimal(10, 2)
+  category    String?  @db.VarChar(100)
+  isAvailable Boolean  @default(true) @map("is_available")
+  imageUrl    String?  @map("image_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([branchId])
+  @@index([category])
+  @@index([isAvailable])
+  @@map("menu_items")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(150)
+  email     String   @unique @db.VarChar(150)
+  password  String   @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  address   String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Staff {
+  id        Int       @id @default(autoincrement())
+  branchId  Int?      @map("branch_id")
+  name      String    @db.VarChar(150)
+  email     String    @unique @db.VarChar(150)
+  password  String    @db.VarChar(255)
+  role      StaffRole @default(staff)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([branchId])
+  @@index([role])
+  @@map("staff")
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  branchId       Int         @map("branch_id")
+  customerId     Int?        @map("customer_id")
+  orderNumber    String?     @unique @map("order_number") @db.VarChar(30)
+  customerName   String?     @map("customer_name") @db.VarChar(150)
+  customerPhone  String?     @map("customer_phone") @db.VarChar(20)
+  orderType      OrderType   @default(dine_in) @map("order_type")
+  tableNumber    String?     @map("table_number") @db.VarChar(10)
+  status         OrderStatus @default(pending)
+  notes          String?     @db.VarChar(500)
+  totalAmount    Decimal     @default(0) @map("total_amount") @db.Decimal(10, 2)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  branch   Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+
+  @@index([branchId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int      @map("order_id")
+  menuItemId Int      @map("menu_item_id")
+  itemName   String   @map("item_name") @db.VarChar(150)
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  quantity   Int      @default(1)
+  subtotal   Decimal  @db.Decimal(10, 2)
+  notes      String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_items")
+}

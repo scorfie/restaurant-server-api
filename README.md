@@ -1,76 +1,39 @@
 # Restaurant Server API
 
-REST + WebSocket API for managing restaurant branches, per-branch menus, orders, customer accounts, and staff accounts, built with Node.js, Express, and MySQL.
+REST + WebSocket API for managing restaurant branches, per-branch menus, orders, customer accounts, and staff accounts, built with NestJS and Supabase (Postgres).
 
 ## Stack
 
-- Node.js + Express, using native ES modules (`"type": "module"` in package.json)
-- MySQL (`mysql2` with a connection pool)
-- `express-validator` for request validation
-- `jsonwebtoken` + `bcryptjs` for authentication
-- `socket.io` for real-time order updates
-- `swagger-ui-express` for interactive API docs
-- Layered architecture: routes → controllers → services → MySQL
+- NestJS (TypeScript)
+- Supabase Postgres, accessed via Prisma (`prisma/schema.prisma`)
+- `class-validator` / `class-transformer` for request validation (DTOs)
+- `@nestjs/jwt` + `bcryptjs` for authentication (custom JWT, not Supabase Auth — `staff`/`customers` tables own their own credentials)
+- `@nestjs/websockets` (Socket.IO) for real-time order updates
+- `@nestjs/swagger` for interactive API docs
+- Layered architecture: controllers → services → Prisma → Postgres
 
 ## Project structure
 
 ```
+prisma/
+  schema.prisma          Datasource + all models/enums
+  seed.ts                 Bootstraps the first admin staff account
 src/
-  config/
-    db.js            MySQL connection pool
-    migrate.js        Runs SQL files in migrations/
-    seedAdmin.js       Bootstraps the first admin staff account
-  controllers/
-    auth.controller.js
-    branch.controller.js
-    customer.controller.js
-    menuItem.controller.js
-    order.controller.js
-    staff.controller.js
-  services/
-    auth.service.js        Login for customers and staff, issues JWTs
-    branch.service.js       All SQL queries live here
-    customer.service.js
-    menuItem.service.js
-    order.service.js        Transactional order creation + status workflow
-    staff.service.js
-  routes/
-    auth.routes.js
-    branch.routes.js
-    customer.routes.js
-    menuItem.routes.js      Branch-scoped + flat routers
-    order.routes.js         Branch-scoped + flat routers
-    staff.routes.js
-    index.js
-  middleware/
-    auth.js             JWT verification + role guards
-    errorHandler.js
-    validate.js
-  validators/
-    auth.validator.js
-    branch.validator.js
-    customer.validator.js
-    menuItem.validator.js
-    order.validator.js
-    staff.validator.js
-  utils/
-    ApiError.js
-    asyncHandler.js
-    jwt.js
-    password.js
-  docs/
-    openapi.js          OpenAPI 3.0 spec served at /api-docs
-  realtime/
-    orderEvents.js       Internal EventEmitter (decouples order.service from Socket.IO)
-    socket.js            JWT-authed Socket.IO server, rooms, broadcasts
-  app.js                Express app setup
-migrations/
-  001_create_branches_table.sql
-  002_create_menu_items_table.sql
-  003_create_customers_table.sql
-  004_create_orders_tables.sql
-  005_create_staff_table.sql
-server.js               Entry point
+  main.ts                 Bootstrap: middleware, global prefix, pipes, filters, Swagger
+  app.module.ts
+  common/
+    filters/http-exception.filter.ts   Uniform {success,message,details?} error shape
+    guards/                             JwtAuthGuard, CustomerGuard, StaffRolesGuard
+    decorators/                         @Roles(), @CurrentUser()
+    pipes/positive-int.pipe.ts
+    dto/pagination-query.dto.ts
+  prisma/                 PrismaService (global module)
+  auth/                   Login/register, JWT strategy
+  branches/
+  menu-items/              Branch-scoped + flat controllers
+  orders/                   Branch-scoped + flat controllers, OrdersGateway (Socket.IO)
+  customers/                Self-service + staff visibility
+  staff/
 ```
 
 ## Setup
@@ -80,14 +43,15 @@ server.js               Entry point
    npm install
    ```
 
-2. Copy the environment file and adjust credentials (including `JWT_SECRET` and the `ADMIN_*` values):
+2. Copy the environment file and fill in your Supabase connection strings, `JWT_SECRET`, and the `ADMIN_*` values:
    ```bash
    cp .env.example .env
    ```
+   `DATABASE_URL` is Supabase's pooled Postgres connection (used at runtime); `DIRECT_URL` is the non-pooled connection (used only by `prisma migrate`). Both are on the Supabase project's Database settings page.
 
-3. Create the database and tables:
+3. Create the database tables:
    ```bash
-   npm run migrate
+   npm run migrate:dev
    ```
 
 4. Bootstrap the first admin staff account (there is no public admin signup endpoint — this is the only way to create one):
@@ -97,8 +61,8 @@ server.js               Entry point
 
 5. Start the server:
    ```bash
-   npm run dev   # with nodemon
-   npm start     # plain node
+   npm run dev     # nest start --watch
+   npm run build && npm start   # compiled
    ```
 
 The API is served under `http://localhost:3000/api/v1`. Interactive docs are at `http://localhost:3000/api-docs` (raw spec at `/api-docs.json`).
